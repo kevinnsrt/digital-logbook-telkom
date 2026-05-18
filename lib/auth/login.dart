@@ -106,9 +106,6 @@ class _LoginPageState extends State<LoginPage> {
                     String? userString = prefs.getString('user_data');
 
                     if (userString != null) {
-                      Map<String, dynamic> user = jsonDecode(userString);
-                      String username = '';
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(" Welcome $username"),));
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (context) => const AuthGate()),

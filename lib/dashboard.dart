@@ -1,8 +1,9 @@
 import 'package:digital_logbook_telkom/add.dart';
 import 'package:digital_logbook_telkom/colors/colors.dart';
-import 'package:digital_logbook_telkom/detail.dart';
+import 'package:digital_logbook_telkom/main.dart';
 import 'package:digital_logbook_telkom/notification.dart';
-import 'package:digital_logbook_telkom/profile.dart';
+import 'package:digital_logbook_telkom/service/get_documents_service.dart';
+import 'package:digital_logbook_telkom/service/login_service.dart';
 import 'package:flutter/material.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -13,7 +14,15 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  late Future<List<dynamic>> futureDocuments;
+  bool isLoggingOut = false;
   @override
+
+  void initState() {
+    super.initState();
+    futureDocuments = GetDocumentService().fetchDocuments();
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: background,
@@ -24,26 +33,51 @@ class _DashboardPageState extends State<DashboardPage> {
               context: context,
               builder: (BuildContext context) {
                 return AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // Bikin pojokan dialog lebih tumpul
                   backgroundColor: Colors.white,
-                  title: const Text('Cari NPK'),
+                  title: const Row(
+                    children: [
+                      SizedBox(width: 10),
+                      Text('Cari Dokumen NPK', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                   content: TextField(
+                    autofocus: true, // Otomatis keyboard naik pas dialog muncul
                     decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)
-                        )
+                      hintText: "Masukkan judul atau nomor NPK...", // Kasih petunjuk
+                      prefixIcon: const Icon(Icons.description_outlined), // Icon di dalam field
+                      filled: true,
+                      fillColor: Colors.grey[100], // Background field agak abu biar kontras
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none, // Hilangkan border default agar lebih clean
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                   ),
                   actions: <Widget>[
                     TextButton(
-                      onPressed: () => Navigator.pop(context, 'Cancel'),
-                      child: const Text('Batal'),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Batal', style: TextStyle(color: Colors.grey[600])),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        // disini nanti tempat ngirim data pada field search bar
-                        Navigator.pop(context, 'OK');
-                      },
-                      child: const Text('Cari'),
+                    // Gunakan ElevatedButton di aksi biar tombol "Cari" lebih menonjol
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Logika pencarian kamu
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Cari'),
+                      ),
                     ),
                   ],
                 );
@@ -57,386 +91,89 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Colors.transparent,
       ),
       body:
-      Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              spacing: 20,
-              children: [
-                // percontainer itu card untuk setiap dokumen (nanti buat pake gesture detector yg tap biar bisa di klik ke detailnya)
-                Container(
+      FutureBuilder<List<dynamic>>(
+        future: futureDocuments,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Gagal memuat data: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Tidak ada data NPK"));
+          }
+
+          // 3. Jika data ada, tampilkan ListView
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              var doc = snapshot.data![index];
+              return Center(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 20), // Spacing antar card
                   width: 370,
-                  height: 240,
-                  color: Colors.white,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12), // Biar lebih manis
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // gap
-                      SizedBox(
-                        height: 16,
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          doc['title'] ?? "Judul Tidak Ada", // Dinamis dari database
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                       ),
-                      // gap
-                      Text("Penyediaan Onsite Untuk Dinas Komunikasi Dan Informatika Kota Payakumbuh 2025",textAlign: TextAlign.center,style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,),),
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-
-                      // container detail
+                      const SizedBox(height: 16),
                       Container(
-                        padding: EdgeInsetsGeometry.only(left: 10),
+                        padding: const EdgeInsets.only(left: 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("CC: DINAS KOMUNIKASI DAN INFORMATIKA KOTA PAYAKUMBUH",style: TextStyle(fontSize: 14),),
-                            Text("MITRA: KOPEGTEL AGRESIF",style: TextStyle(fontSize: 14),),
-                            Text("LAYANAN: Desember 2025",style: TextStyle(fontSize: 14),),
+                            Text("CC: ${doc['customer'] ?? '-'}", style: const TextStyle(fontSize: 14)),
+                            Text("MITRA: ${doc['mitra'] ?? '-'}", style: const TextStyle(fontSize: 14)),
+                            Text("LAYANAN: ${doc['bulan_layanan'] ?? '-'}", style: const TextStyle(fontSize: 14)),
+                            Text("Status: ${doc['status'] ?? '-'}", style: const TextStyle(fontSize: 14)),
                           ],
                         ),
                       ),
-
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      // row untuk 2 button horizontal
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         spacing: 25,
                         children: [
-                          // button detail
+                          // Button Ambil
                           SizedBox(
-                            width: 157,
+                            width: 330,
                             height: 43,
-                            child: ElevatedButton(onPressed: (){
-                              // Navigator.push(context,MaterialPageRoute<void>(builder: (context) => DetailPage()));
-                              _gotodetailpage();
-                            }, child: Text("Detail"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white60,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
+                            child: ElevatedButton(
+                              onPressed: doc['status'] == 'taken' ? null : () {
+                                // Fungsi ambil dokumen nanti di sini
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: doc['status'] == 'taken' ? Colors.grey : Colors.blue,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text(doc['status'] == 'taken' ? "Sudah Diambil" : "Ambil"),
+                            ),
                           ),
-
-                          // button ambil
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){}, child: Text("Ambil"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
                         ],
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  width: 370,
-                  height: 240,
-                  color: Colors.white,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      Text("Penyediaan Onsite Untuk Dinas Komunikasi Dan Informatika Kota Payakumbuh 2025",textAlign: TextAlign.center,style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,),),
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-
-                      // container detail
-                      Container(
-                        padding: EdgeInsetsGeometry.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("CC: DINAS KOMUNIKASI DAN INFORMATIKA KOTA PAYAKUMBUH",style: TextStyle(fontSize: 14),),
-                            Text("MITRA: KOPEGTEL AGRESIF",style: TextStyle(fontSize: 14),),
-                            Text("LAYANAN: Desember 2025",style: TextStyle(fontSize: 14),),
-                          ],
-                        ),
-                      ),
-
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      // row untuk 2 button horizontal
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 25,
-                        children: [
-                          // button detail
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){
-                              // Navigator.push(context,MaterialPageRoute<void>(builder: (context) => DetailPage()));
-                              _gotodetailpage();
-                            }, child: Text("Detail"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white60,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                          // button ambil
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){}, child: Text("Ambil"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 370,
-                  height: 240,
-                  color: Colors.white,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      Text("Penyediaan Onsite Untuk Dinas Komunikasi Dan Informatika Kota Payakumbuh 2025",textAlign: TextAlign.center,style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,),),
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-
-                      // container detail
-                      Container(
-                        padding: EdgeInsetsGeometry.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("CC: DINAS KOMUNIKASI DAN INFORMATIKA KOTA PAYAKUMBUH",style: TextStyle(fontSize: 14),),
-                            Text("MITRA: KOPEGTEL AGRESIF",style: TextStyle(fontSize: 14),),
-                            Text("LAYANAN: Desember 2025",style: TextStyle(fontSize: 14),),
-                          ],
-                        ),
-                      ),
-
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      // row untuk 2 button horizontal
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 25,
-                        children: [
-                          // button detail
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){
-                              // Navigator.push(context,MaterialPageRoute<void>(builder: (context) => DetailPage()));
-                              _gotodetailpage();
-                            }, child: Text("Detail"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white60,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                          // button ambil
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){}, child: Text("Ambil"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 370,
-                  height: 240,
-                  color: Colors.white,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      Text("Penyediaan Onsite Untuk Dinas Komunikasi Dan Informatika Kota Payakumbuh 2025",textAlign: TextAlign.center,style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,),),
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-
-                      // container detail
-                      Container(
-                        padding: EdgeInsetsGeometry.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("CC: DINAS KOMUNIKASI DAN INFORMATIKA KOTA PAYAKUMBUH",style: TextStyle(fontSize: 14),),
-                            Text("MITRA: KOPEGTEL AGRESIF",style: TextStyle(fontSize: 14),),
-                            Text("LAYANAN: Desember 2025",style: TextStyle(fontSize: 14),),
-                          ],
-                        ),
-                      ),
-
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      // row untuk 2 button horizontal
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 25,
-                        children: [
-                          // button detail
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){
-                              // Navigator.push(context,MaterialPageRoute<void>(builder: (context) => DetailPage()));
-                              _gotodetailpage();
-                            }, child: Text("Detail"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white60,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                          // button ambil
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){}, child: Text("Ambil"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 370,
-                  height: 240,
-                  color: Colors.white,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      Text("Penyediaan Onsite Untuk Dinas Komunikasi Dan Informatika Kota Payakumbuh 2025",textAlign: TextAlign.center,style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,),),
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-
-                      // container detail
-                      Container(
-                        padding: EdgeInsetsGeometry.only(left: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("CC: DINAS KOMUNIKASI DAN INFORMATIKA KOTA PAYAKUMBUH",style: TextStyle(fontSize: 14),),
-                            Text("MITRA: KOPEGTEL AGRESIF",style: TextStyle(fontSize: 14),),
-                            Text("LAYANAN: Desember 2025",style: TextStyle(fontSize: 14),),
-                          ],
-                        ),
-                      ),
-
-                      // gap
-                      SizedBox(
-                        height: 16,
-                      ),
-                      // gap
-                      // row untuk 2 button horizontal
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 25,
-                        children: [
-                          // button detail
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){
-                              // Navigator.push(context,MaterialPageRoute<void>(builder: (context) => DetailPage()));
-                              _gotodetailpage();
-                            }, child: Text("Detail"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white60,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                          // button ambil
-                          SizedBox(
-                            width: 157,
-                            height: 43,
-                            child: ElevatedButton(onPressed: (){}, child: Text("Ambil"),style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),),
-                          ),
-
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          )
+              );
+            },
+          );
+        },
       ),
       // di bottom navbar juga iconnya dibuat gesture detector biar bisa di klik untuk ke menu list, home atau notifikasi
       bottomNavigationBar: BottomAppBar(
@@ -458,22 +195,42 @@ class _DashboardPageState extends State<DashboardPage> {
               },
               child: Icon(Icons.add,size: 42,),
             ),
-            GestureDetector(
-              onTap: (){
-                _gotoprofilepage();
+            IconButton(
+              icon: isLoggingOut
+                  ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)
+              )
+                  : const Icon(Icons.logout_outlined,size: 38,color: Colors.black,),
+              onPressed: () async { // Disable tombol saat loading
+                setState(() {
+                  isLoggingOut = true;
+                });
+
+                bool success = await LoginService().logout();
+
+                if (success) {
+                  Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AuthGate()),
+                          (route) => false
+                  );
+                } else {
+                  setState(() {
+                    isLoggingOut = false;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Gagal Logout, coba lagi")),
+                  );
+                }
               },
-              child: Icon(Icons.person,size: 42,),
-            ),
+            )
           ],
         ),
       ),
     );
   }
-  // fungsi pergi ke detail dokumen
-  _gotodetailpage(){
-    Navigator.push(context, MaterialPageRoute<void>(builder: (context)=> DetailPage()));
-  }
-
   // fungsi pergi ke halaman tambah dokumen
   _gotoaddpage(){
     Navigator.push(context, MaterialPageRoute<void>(builder: (context)=> AddDocumentPage()));
@@ -483,8 +240,5 @@ class _DashboardPageState extends State<DashboardPage> {
     Navigator.push(context, MaterialPageRoute<void>(builder: (context)=> NotificationPage()));
   }
 
-  _gotoprofilepage(){
-    Navigator.push(context, MaterialPageRoute<void>(builder: (context)=> ProfilePage()));
-  }
 }
 
